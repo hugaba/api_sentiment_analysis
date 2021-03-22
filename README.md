@@ -31,4 +31,5 @@ Option 2:
   - num_of_site : number of site to scrape
   - num_page : number of pages to scrape on each site
   - model: model to use for prediction(only possible value 'camembert', if model not specified, this will do basic nlp prediction)
+  
 -example: http://127.0.0.1:5000/graphs?category=restaurants_bars&num_of_site=50&num_page=3&model=camembert
