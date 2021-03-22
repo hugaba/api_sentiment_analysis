@@ -8,6 +8,7 @@ contributors: Imad Hennini, Hugo Algaba
 - scraping.py : file witch takes scrape data on trustpilot
 - sentiment_analysis.ipynb : notebook for model creation
 - sentiment_analysis_camembert.ipynb notebook for camembert model creation
+- requirements.txt : file to create virtual envirronment
 
 ## How to use api?
 Download weight model files and add them to your virtual envirronment directory:
