@@ -11,13 +11,13 @@ contributors: Imad Hennini, Hugo Algaba
 - requirements.txt : file to create virtual envirronment
 
 ## How to use api?
-Download weight model files and add them to your virtual envirronment directory:
-https://drive.google.com/drive/folders/1TlVXRIaed36yPEV9kliUAdufRF4FjrmY?usp=sharing
+### prerequisite: download weight files
+Open terminal into your virtual environment folder
+Make the file model_weights.sh executable by : chmod 744 model_weights.sh
+Execute model_weights.sh with the command line: sh -x ./model_weights.sh
 
-- 100features_40minwords_20context_bigram
-- model_bigram.h5
-- model_bigram.json
-- camembert_model
+(If executing the .sh file doesn't work, you can directly download the 4 weight model files and add them to your virtual envirronment directory:
+https://drive.google.com/drive/folders/1TlVXRIaed36yPEV9kliUAdufRF4FjrmY?usp=sharing
 
 Run api.py file.
 
@@ -31,6 +31,7 @@ Option 2:
 - You can add optional arguments:
   - num_of_site : number of site to scrape
   - num_page : number of pages to scrape on each site
+  - location : city or department code where to do the search
   - model: model to use for prediction(only possible value 'camembert', if model not specified, this will do basic nlp prediction)
   
--example: http://127.0.0.1:5000/graphs?category=restaurants_bars&num_of_site=50&num_page=3&model=camembert
+-example: http://127.0.0.1:5000/graphs?category=restaurants_bars&num_of_site=50&num_page=3&location=75&model=camembert
