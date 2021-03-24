@@ -105,30 +105,33 @@ def graphs():
     refs, df = scraping.scrape(category, location, num_of_site, num_page)
     time_elapsed = datetime.now() - init_time
     print(f'Scraping time : {time_elapsed}')
+    if len(df)>0:
+        # 3. Preprocess dataframe before prediction
+        init_time = datetime.now()
+        print(' Start preprocess '.center(30, '#'))
+        df = process.preprocess_df(df)
+        time_elapsed = datetime.now() - init_time
+        print(f'Preprocess time : {time_elapsed}')
 
-    # 3. Preprocess dataframe before prediction
-    init_time = datetime.now()
-    print(' Start preprocess '.center(30, '#'))
-    df = process.preprocess_df(df)
-    time_elapsed = datetime.now() - init_time
-    print(f'Preprocess time : {time_elapsed}')
+        # 4. Predict sentiment and add it to dataframe
+        init_time = datetime.now()
+        print(' Start prediction '.center(30, '#'))
+        if model_to_test == 'camembert':
+            df = model.predict_camembert(df)
+        else:
+            df = model.predict(df)
+        time_elapsed = datetime.now() - init_time
+        print(f'Prediction time : {time_elapsed}')
 
-    # 4. Predict sentiment and add it to dataframe
-    init_time = datetime.now()
-    print(' Start prediction '.center(30, '#'))
-    if model_to_test == 'camembert':
-        df = model.predict_camembert(df)
+        # 5. Apply postprocess to transform data into json
+        init_time = datetime.now()
+        print(' Start postprocess '.center(30, '#'))
+        json_review = process.postprocess(df, refs)
+        time_elapsed = datetime.now() - init_time
+        print(f'Postprocess time : {time_elapsed}')
     else:
-        df = model.predict(df)
-    time_elapsed = datetime.now() - init_time
-    print(f'Prediction time : {time_elapsed}')
-
-    # 5. Apply postprocess to transform data into json
-    init_time = datetime.now()
-    print(' Start postprocess '.center(30, '#'))
-    json_review = process.postprocess(df, refs)
-    time_elapsed = datetime.now() - init_time
-    print(f'Postprocess time : {time_elapsed}')
+        print("No data found")
+        json_review = "<h1>Pas de données</h1>"
     time_elapsed = datetime.now() - initial_time
     print(f'Total time elapsed : {time_elapsed}')
     return json_review
