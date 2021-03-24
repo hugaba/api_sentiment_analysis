@@ -17,7 +17,7 @@ Make the file model_weights.sh executable by : chmod 744 model_weights.sh
 Execute model_weights.sh with the command line: sh -x ./model_weights.sh
 
 (If executing the .sh file doesn't work, you can directly download the 4 weight model files and add them to your virtual envirronment directory:
-https://drive.google.com/drive/folders/1TlVXRIaed36yPEV9kliUAdufRF4FjrmY?usp=sharing
+https://drive.google.com/drive/folders/1TlVXRIaed36yPEV9kliUAdufRF4FjrmY?usp=sharing)
 
 Run api.py file.
 
