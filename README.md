@@ -35,8 +35,8 @@ Option 2:
 - Use the base: http://127.0.0.1:5000/
 - then add *graphs?category=* followed by the category you want on trustpilot (by default, this will scrape 5 sites and 2 pages on each site)
 - You can add optional arguments:
-  - num_of_site : number of site to scrape
-  - num_page : number of pages to scrape on each site
+  - num_of_site : number of site to scrape (0 for all sites)
+  - num_page : number of pages to scrape on each site (0 for all pages)
   - location : city or department code where to do the search
   - model: model to use for prediction(only possible value 'camembert', if model not specified, this will do basic nlp prediction)
   
