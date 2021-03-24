@@ -2,16 +2,37 @@ import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 import re
+from numpy import random
+from time import sleep
 
-# header to don't be stopped from scraping website
-HEADERS = {
+# headers to don't be stopped from scraping website
+HEADERS1 = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Max-Age': '3600',
     'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:52.0) Gecko/20100101 Firefox/52.0'
 }
+HEADERS2 = {
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3',
+    'Accept-Encoding': 'gzip',
+    'Accept-Language': 'en-US,en;q=0.9,es;q=0.8',
+    'Upgrade-Insecure-Requests': '1',
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.132 Safari/537.36'
+}
 
+HEADERS3 = {
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+    'Accept-Encoding': "gzip, deflate, br",
+    'Accept-Language': 'fr,fr-FR;q=0.8,en-US;q=0.5,en;q=0.3',
+    'Host': 'httpbin.org',
+    'Referer': 'https://www.codementor.io/@scrapingdog/10-tips-to-avoid-getting-blocked-while-scraping-websites-16papipe62',
+    'Upgrade-Insecure-Requests': '1',
+    'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:86.0) Gecko/20100101 Firefox/86.0',
+    'X-Amzn-Trace-Id': 'Root=1-605b2159-39d5af5a4452cae6540ca5e2'
+}
+
+headers = [HEADERS1, HEADERS2, HEADERS3]
 
 def scrape_category(category: str, location: str, num_of_site: int) -> list:
     """
@@ -28,6 +49,8 @@ def scrape_category(category: str, location: str, num_of_site: int) -> list:
     page_to_scrape = True
     num_page = 1
     while page_to_scrape:
+        # Change header every page
+        header = headers[num_page % len(headers)]
         # url to scrape
         url = f"https://fr.trustpilot.com/categories/{category}?page={num_page}&timeperiod=0"
 
@@ -36,9 +59,9 @@ def scrape_category(category: str, location: str, num_of_site: int) -> list:
             url += f"&location={location}"
 
         try:
-            req = requests.get(url, HEADERS, timeout=1)  # wait 1 second before sending error
+            req = requests.get(url, header, timeout=1)  # wait 1 second before sending error
         except:
-            req = requests.get(url, HEADERS)  # try request a second time
+            req = requests.get(url, header)  # try request a second time
 
         soup = BeautifulSoup(req.content, 'html.parser')
         # search site name into category page
@@ -77,9 +100,9 @@ def scrape_category(category: str, location: str, num_of_site: int) -> list:
             # from "Cadeaucity" we want "www.cadeaucity.com"
             url2 = f"https://fr.trustpilot.com/search?query={site}"
             try:
-                req2 = requests.get(url2, HEADERS, timeout=1)  # wait 1 second before sending error
+                req2 = requests.get(url2, header, timeout=1)  # wait 1 second before sending error
             except:
-                req2 = requests.get(url2, HEADERS)
+                req2 = requests.get(url2, header)
 
             soup2 = BeautifulSoup(req2.content, 'html.parser')
 
@@ -96,7 +119,7 @@ def scrape_category(category: str, location: str, num_of_site: int) -> list:
                 if any(substring in elt.lower() for substring in end):
                     site_to_scrape.append(elt)
                     break
-
+    list_of_site = [x for x in list_of_site if x not in site_to_remove]
     return [list_of_site, site_to_scrape]
 
 
@@ -116,14 +139,19 @@ def scrape_site(refs: list, max_page) -> pd.DataFrame:
 
         # scrape while there is page to scrape or max number of page is reached
         while page_to_scrape:
+            # change header each page
+            header = headers[num_page % len(headers)]
+            # add a sleep time for each page
+            sleeptime = random.uniform(0, 3)
+            sleep(sleeptime)
 
             # url to scrape
             url = f"https://fr.trustpilot.com/review/{site}?page={num_page}"
 
             try:
-                req = requests.get(url, HEADERS, timeout=1)  # wait 1 second before sending error
+                req = requests.get(url, header, timeout=1)  # wait 1 second before sending error
             except:
-                req = requests.get(url, HEADERS)
+                req = requests.get(url, header)
             soup = BeautifulSoup(req.content, 'html.parser')
 
             # get infos for every review for one site
@@ -191,8 +219,8 @@ def scrape(category: str, location: str, num_of_site: int, num_page: int) -> tup
 # ####################################
 
 # ref_to_scrape = 'auroremarket.fr'
-#category = 'shopping_fashion'
-#location = 75
+category = 'shopping_fashion'
+location = 75
 
 #refs = scrape_category(category)
 #refs, df = scrape(category, location, num_of_site=0, num_page=0)
