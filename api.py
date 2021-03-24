@@ -1,6 +1,7 @@
 import flask
 from flask import request
 from datetime import datetime
+import pandas as pd
 
 # importation of linked python file
 import scraping
@@ -30,6 +31,8 @@ def home():
     <ul>
         <li> le nombre de site à intégrer dans votre recherche '&num_of_site=' (0 pour tous les sites, défaut = 5)</li>
         <li> le nombre de page à rechercher pour chaque site '&num_page=' (0 pour toutes les pages, défaut = 2)</li>
+        <li> la ville dans laquelle effectuer la recherche  '&location=' (nom de ville ou numéro de département)</li>
+        <li> utiliser camemBERT pour la modélisation '&model=camembert' (plus long mais meilleur résultat)</li>
     </ul>
 </p>
 <p>Exemple:  
@@ -67,24 +70,31 @@ def home():
 @app.route('/graphs', methods=['GET'])
 def graphs():
     initial_time = datetime.now()
-    # 1. Get desired category and number of page to scrape in each site from request
+    # 1. Get infos for scraping
+    # Mandatory argument : Category
     category = request.args.get('category')
 
-    if request.args.get('num_page'):
-        num_page = int(request.args.get('num_page'))
-    else:
-        num_page = 2
-
+    # Optional argument
+    # number of site to scrape per category, default 5 (0 for max)
     if request.args.get('num_of_site'):
         num_of_site = int(request.args.get('num_of_site'))
     else:
         num_of_site = 5
-
+    # number of page to scrape per site, default 2 (0 for max)
+    if request.args.get('num_page'):
+        num_page = int(request.args.get('num_page'))
+    else:
+        num_page = 2
+    # city where the scraping is desired (better with department number)
+    if request.args.get('location'):
+        location = request.args.get('location')
+    else:
+        location = 'no city'
+    # model to use for scraping (one option 'camembert', else default model)
     model_to_test = ''
     if request.args.get('model'):
         model_to_test = 'camembert'
 
-    print(category, num_page, num_of_site)
     print('\n', '#'*50)
     print(f' Start Analyse on {category} '.center(50, '#'))
     print('#'*50, '\n')
@@ -92,7 +102,7 @@ def graphs():
     # 2. Scrape trustpilot to get dataframe
     init_time = datetime.now()
     print(' Start scraping '.center(30, '#'))
-    refs, df = scraping.scrape(category, num_of_site, num_page)
+    refs, df = scraping.scrape(category, location, num_of_site, num_page)
     time_elapsed = datetime.now() - init_time
     print(f'Scraping time : {time_elapsed}')
 
@@ -100,7 +110,6 @@ def graphs():
     init_time = datetime.now()
     print(' Start preprocess '.center(30, '#'))
     df = process.preprocess_df(df)
-    df.to_csv(r'test.csv')
     time_elapsed = datetime.now() - init_time
     print(f'Preprocess time : {time_elapsed}')
 
@@ -122,6 +131,52 @@ def graphs():
     print(f'Postprocess time : {time_elapsed}')
     time_elapsed = datetime.now() - initial_time
     print(f'Total time elapsed : {time_elapsed}')
+    return json_review
+
+
+@app.route('/test', methods=['GET'])
+def test():
+    initial_time = datetime.now()
+    category = 'restaurants_bars'
+
+    model_to_test = ''
+    if request.args.get('model'):
+        model_to_test = 'camembert'
+
+    print('\n', '#'*50)
+    print(f' Start Analyse on {category} '.center(50, '#'))
+    print('#'*50, '\n')
+
+    init_time = datetime.now()
+    print(' Start scraping '.center(30, '#'))
+    time_elapsed = datetime.now() - init_time
+    print(f'Scraping time : {time_elapsed}')
+
+    init_time = datetime.now()
+    print(' Start preprocess '.center(30, '#'))
+    time_elapsed = datetime.now() - init_time
+    print(f'Preprocess time : {time_elapsed}')
+
+    # 4. Predict sentiment and add it to dataframe
+    init_time = datetime.now()
+    print(' Start prediction '.center(30, '#'))
+    if model_to_test == 'camembert':
+        df = pd.read_csv(f'predict_{category}_cam.csv')
+    else:
+        df = pd.read_csv(f'predict_{category}.csv')
+    refs = [df.site.unique(), df.site.unique()]
+    time_elapsed = datetime.now() - init_time
+    print(f'Prediction time : {time_elapsed}')
+
+    # 5. Apply postprocess to transform data into json
+    init_time = datetime.now()
+    print(' Start postprocess '.center(30, '#'))
+    json_review = process.postprocess(df, refs)
+    time_elapsed = datetime.now() - init_time
+    print(f'Postprocess time : {time_elapsed}')
+    time_elapsed = datetime.now() - initial_time
+    print(f'Total time elapsed : {time_elapsed}')
+
     return json_review
 
 
