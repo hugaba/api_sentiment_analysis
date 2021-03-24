@@ -11,6 +11,7 @@ lien power-point: https://drive.google.com/file/d/1bUDicc4vIvRNKSJGYNseACRYx1m7M
 - sentiment_analysis.ipynb : notebook for model creation
 - sentiment_analysis_camembert.ipynb notebook for camembert model creation
 - requirements.txt : file to create virtual envirronment
+- model_weights.sh: to load weight files
 
 ## How to use api?
 ### prerequisite: download weight files
