@@ -1,5 +1,6 @@
 # api_sentiment_analysis
 contributors: Imad Hennini, Hugo Algaba
+lien power-point: https://drive.google.com/file/d/1bUDicc4vIvRNKSJGYNseACRYx1m7MIPb/view?usp=sharing
 
 ## List of files:
 - api.py : Main file to launch to run api.
