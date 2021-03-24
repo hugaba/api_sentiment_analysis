@@ -1,5 +1,6 @@
 import pandas as pd
 import re
+import numpy as np
 # import nltk
 
 # nltk.download('punkt')
@@ -16,6 +17,9 @@ from collections import Counter
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from gensim.models import Phrases
+from spacy.lang.fr.stop_words import STOP_WORDS as fr_stop
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.feature_extraction.text import TfidfTransformer
 
 # regex to keep letters (also with accent) and emojis
 EMOJI_PATTERN = re.compile(
@@ -40,6 +44,7 @@ stop_words = stopwords.words("french")
 new_stop_words = ['avoir', 'être', 'dire', 'donc', 'si', 'livraison', 'livrer', 'car', 'command', 'commande',
                   'commander']
 stop_words.extend(new_stop_words)
+stop_words = set.union(fr_stop, set(stop_words))
 
 try:
     @Language.factory('french_lemmatizer')
@@ -62,7 +67,7 @@ def clean_txt(txt: str) -> str:
     """
 
     # Keep alphanumerical
-    txt = re.sub(EMOJI_PATTERN, ' ', txt)
+    txt = re.sub(EMOJI_PATTERN, ' ', str(txt))
 
     # remove spaces before and after string and lower letters
     txt = txt.strip().lower()
@@ -120,29 +125,54 @@ def preprocess(txt: str) -> list:
 
 
 def preprocess_df(df):
-    df['review'] = df['titre'] + ' ' + df['comment']
+    df['space'] = ' '
+    df['review'] = df[['titre', 'space', 'comment']].fillna('').sum(axis=1)
     df['review'] = df['review'].apply(preprocess)
     bigram_transformer = Phrases(df['review'])
     df['review'] = bigram_transformer[df['review']]
     return df
 
 
-def get_word_cloud(df: pd.DataFrame, nb_of_words=40) -> dict:
+def get_word_cloud(df: pd.DataFrame, nb_of_words=30) -> dict:
     """
     get number of occurence for 'nb_of_words' most common words
     :param df: dataframe
     :param nb_of_words: number of words to show
     :return: dict: dictionary of top words with nb of occurence
     """
+    reviews = []
     word_cloud = {}
     if len(df) > 0:
-        list_of_words = df['review'].sum(axis=0)
-        count_pos = Counter(list_of_words)
-        word_cloud_tuples = count_pos.most_common()
-        word_cloud_tuples = word_cloud_tuples[:nb_of_words]
-        for elt in word_cloud_tuples:
-            word_cloud[elt[0]] = elt[1]
+        df = df.dropna(subset=['review'], axis="rows")
+        df['review2'] = df['review'].map(clean_txt)
+        for li in df['review2']:
+            reviews.append(li)
 
+        cvec = CountVectorizer(stop_words=stop_words, min_df=1, max_df=1.0, ngram_range=(1, 2))
+        sf = cvec.fit_transform(reviews)
+
+        transformer = TfidfTransformer()
+        transformed_weights = transformer.fit_transform(sf)
+        weights = np.asarray(transformed_weights.mean(axis=0)).ravel().tolist()
+        weights_df = pd.DataFrame({'term': cvec.get_feature_names(), 'weight': weights})
+        tfidf = weights_df.sort_values(by='weight', ascending=False).head(nb_of_words)
+        if len(df) > 0:
+            list_of_words = df['review'].sum(axis=0)
+            word_list = []
+            for word in list_of_words:
+                word = clean_txt(word)
+                word_list.append(word)
+
+            count_pos = Counter(word_list)
+            word_cloud_tuples = count_pos.most_common()
+
+            for _, row in tfidf.iterrows():
+                for elt in word_cloud_tuples:
+                    if elt[0] == row.term:
+                        word_cloud[elt[0]] = {
+                            'tfidf': row.weight,
+                            'nb_occurrence': elt[1]
+                        }
     return word_cloud
 
 
@@ -192,7 +222,6 @@ def get_details(df: pd.DataFrame) -> json:
 
 
 def get_last_month(df: pd.DataFrame) -> json:
-    #df['date'] = df['date'].str.split('+', n=1, expand=True)[0]
     df['date'] = df['date'].str[:19]
     df['date'] = pd.to_datetime(df['date'], format='%Y-%m-%dT%H:%M:%S')
     df = df[df['date'] >= (datetime.now() - relativedelta(months=+3))]
@@ -207,10 +236,10 @@ def postprocess(df: pd.DataFrame, refs: list) -> json:
     :param refs: list: total list of sites, scraped sites
     :return: json file
     """
-
     json_review = {
         'summary': get_summary(df, refs),
         'details': get_details(df),
         'last_3_month': get_last_month(df)
     }
     return json_review
+

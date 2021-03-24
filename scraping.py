@@ -13,10 +13,11 @@ HEADERS = {
 }
 
 
-def scrape_category(category: str, num_of_site: int) -> list:
+def scrape_category(category: str, location: str, num_of_site: int) -> list:
     """
     scrape a given category to have a list of site to use in scrape_site
     :param category: str: category to scrape
+    :param location: str: city where to search category
     :param num_of_site: int: number of site to scrape
     :return: list: list of site and refs to scrape in the param category
     """
@@ -28,12 +29,16 @@ def scrape_category(category: str, num_of_site: int) -> list:
     num_page = 1
     while page_to_scrape:
         # url to scrape
-        url = f"https://fr.trustpilot.com/categories/{category}?page={num_page}"
+        url = f"https://fr.trustpilot.com/categories/{category}?page={num_page}&timeperiod=0"
+
+        if location != 'no city':
+            # url with location
+            url += f"&location={location}"
 
         try:
             req = requests.get(url, HEADERS, timeout=1)  # wait 1 second before sending error
         except:
-            req = requests.get(url, HEADERS)
+            req = requests.get(url, HEADERS)  # try request a second time
 
         soup = BeautifulSoup(req.content, 'html.parser')
         # search site name into category page
@@ -51,6 +56,7 @@ def scrape_category(category: str, num_of_site: int) -> list:
     # keep unique values from list
     list_of_site = list(dict.fromkeys(list_of_site))
 
+    # replace number of site to scrape by the full length of site if condition is True
     if num_of_site > len(list_of_site) or num_of_site == 0:
         num_of_site = len(list_of_site)
 
@@ -58,12 +64,13 @@ def scrape_category(category: str, num_of_site: int) -> list:
 
     for site in list_of_site[:num_of_site]:
         end = ['.fr', '.com']
+        # Check if 'n'existe plus' is in site name to remove it
+        if "n'existe plus" in site.lower():
+            site_to_remove.append(site)
         # check if adress already finish by '.fr' or '.com'
         # if True url2 will lead to nothing
-        if any(substring in site.lower() for substring in end):
+        elif any(substring in site.lower() for substring in end):
             site_to_scrape.append(site)
-        elif "n'existe plus" in site.lower():
-            site_to_remove.append(site)
         else:
             # scrape a new url with the site name to get full site name
             # from "Flashbay" we want "flashbay.fr"
@@ -73,10 +80,22 @@ def scrape_category(category: str, num_of_site: int) -> list:
                 req2 = requests.get(url2, HEADERS, timeout=1)  # wait 1 second before sending error
             except:
                 req2 = requests.get(url2, HEADERS)
+
             soup2 = BeautifulSoup(req2.content, 'html.parser')
-            for final_site in soup2.find(["a"], attrs={"class": "search-result-heading"}):
-                final_site = final_site.split(' | ')[1]
-                site_to_scrape.append(final_site)
+
+            similar_site = []
+            # selection of all possible url per site
+            for final_site in soup2.find_all(["a"], attrs={"class": "search-result-heading"}):
+                final_site = final_site.text.split(' | ')
+                if final_site[0] == site:
+                    similar_site.append(final_site[1])
+
+            # selection of url with good termination
+            # will keep 'ensuite.fr' instead of 'www.ensuite.de'
+            for elt in similar_site:
+                if any(substring in elt.lower() for substring in end):
+                    site_to_scrape.append(elt)
+                    break
 
     return [list_of_site, site_to_scrape]
 
@@ -144,21 +163,25 @@ def scrape_site(refs: list, max_page) -> pd.DataFrame:
             else:
                 page_to_scrape = False
 
+    # create pandas dataframe
     df = pd.DataFrame(infos, columns=['site', 'note', 'titre', 'comment', 'date'])
     pd.set_option('display.max_columns', None)
     pd.set_option('display.expand_frame_repr', False)
     return df
 
 
-def scrape(category: str, num_of_site: int, num_page: int) -> tuple:
+def scrape(category: str, location: str, num_of_site: int, num_page: int) -> tuple:
     """
     scrape truspilot reviews
     :param category: str: category to scrape
+    :param location: str: city where to search category
     :param num_of_site: int: number of site to scrape (0 for all site)
     :param num_page: int: number of page to scrape on each site (0 for all pages)
     :return: tuple: tuple with refs from scrape_category and dataframe with scraped data
     """
-    refs = scrape_category(category, num_of_site)
+    # 1. scrape trustpilot for a specific category, location and number of site and get references to scrape
+    refs = scrape_category(category, location, num_of_site)
+    # 2. scrape truspilot for specific references and num of pages and get a pandas dataframe
     df = scrape_site(refs[1], num_page)
     return refs, df
 
@@ -168,9 +191,15 @@ def scrape(category: str, num_of_site: int, num_page: int) -> tuple:
 # ####################################
 
 # ref_to_scrape = 'auroremarket.fr'
-#category = 'restaurants_bars'
+#category = 'shopping_fashion'
+#location = 75
 
-# refs = scrape_category(category)
-#df = scrape(category, num_of_site=0, num_page=1)
+#refs = scrape_category(category)
+#refs, df = scrape(category, location, num_of_site=0, num_page=0)
+#pd.set_option('display.max_columns', None)
+#pd.set_option('display.expand_frame_repr', False)
 
+#df.to_csv('shopping_fashion.csv')
+
+#print(type(df))
 #print(df)

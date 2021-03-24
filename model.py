@@ -3,7 +3,7 @@ import numpy as np
 from gensim.models import Word2Vec, Phrases
 from keras.models import model_from_json
 import torch
-from transformers import CamembertTokenizer
+from transformers import CamembertTokenizer, CamembertForSequenceClassification
 from keras.preprocessing.sequence import pad_sequences
 
 MAX_LEN = 128
@@ -85,11 +85,13 @@ def predict_camembert(df: pd.DataFrame) -> pd.DataFrame:
     :param df: dataframe with reviews
     :return: dataframe: dataframe with prediction of reviews
     """
-    df['comments'] = df['titre'] + ' ' + df['comment']
+    df['space'] = ' '
+    df['comments'] = df[['titre', 'space', 'comment']].fillna('').sum(axis=1)
+    df = df.dropna(subset=['comments'], axis="rows")
     comments = df['comments'].to_list()
-
     # camemBERT
-    model2 = torch.load("camembert_model")
+    state_dict = torch.load("camemBERT_38000_state_dict.pt", map_location=torch.device('cpu'))
+    model = CamembertForSequenceClassification.from_pretrained('camembert-base', num_labels=2, state_dict=state_dict)
 
     # Initialize CamemBERT tokenizer
     tokenizer = CamembertTokenizer.from_pretrained('camembert-base', do_lower_case=True)
@@ -113,7 +115,7 @@ def predict_camembert(df: pd.DataFrame) -> pd.DataFrame:
     predictions = []
     with torch.no_grad():
         # Forward pass, calculate logit predictions
-        outputs = model2(prediction_inputs.to(device), token_type_ids=None,
+        outputs = model(prediction_inputs.to(device), token_type_ids=None,
                          attention_mask=prediction_masks.to(device))
         logits = outputs[0]
         logits = logits.detach().cpu().numpy()
